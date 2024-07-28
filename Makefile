@@ -28,5 +28,5 @@ $(TARGET): src/$(TARGET).c
 	@$(CP) $(BUILDDIR)$(DIRSEP)$@.ihx clock.hex
 
 clean:
-	@$(RM) "$(BUILDDIR)$(DIRSEP)*"
+	@$(RM) "$(BUILDDIR)$(DIRSEP)"*
 	@$(RMDIR) "$(BUILDDIR)"

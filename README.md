@@ -41,7 +41,7 @@ and seconds respectively. Finally, the button inputs differed, too.
 *6-digit clock schematic*
 
 As advised by Ruthsarian, I compiled the source using [SDCC version 3.5.0][457].
-Any newer version would increas the compiled size to more than 2048 bytes &ndash;
+Any newer version would increase the compiled size to more than 2048 bytes &ndash;
 the chip's maximum ROM capacity.
 
 ## Features

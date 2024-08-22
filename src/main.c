@@ -1,6 +1,5 @@
 #include <mcs51/at89x051.h>
 #include <stdint.h>
-
 /* 
  * P1 = which segments to light, 0 = on, 1 = off
  *  P1_0 = g
@@ -32,9 +31,26 @@
  *  B2 = S2 = Middle Button
  *  B3 = S3 = Left Button
  *
- *  Short B1 press: cycles through settings (clock, alarm, enable/disable alarm)
- *  Long B2 press: while displaying current time or alarm, will enter set alarm/time mode.
- *  Short B2 press on alarm enable/disable will toggle the setting
+ *  Set current time:
+ *   1.  start clock in NORMAL mode (showing current time)
+ *   2.  LONG press B1 to edit time's hour
+ *   3a. SHORT press B2 to increase time's hour
+ *   3b. or LONG press B2 to increase time's hour quickly
+ *   4.  SHORT press B1 to edit time's minute
+ *   5a. SHORT press B2 to increase time's minute
+ *   5b. or LONG press B2 to increase time's minute quickly
+ *   6.  SHORT press B1 to return to NORMAL mode
+ * 
+ *  Set alarm time:
+ *   1.  start clock in NORMAL mode (showing current time)
+ *   2.  SHORT press B1 to switch to ALARM mode
+ *   2.  LONG press B2 to edit alarm's hour
+ *   3a. SHORT press B2 to increase alarm's hour
+ *   3b. or LONG press B2 to increase alarm's hour quickly
+ *   4.  SHORT press B1 to edit alarm's minute
+ *   5a. SHORT press B2 to increase alarm's minute
+ *   5b. or LONG press B2 to increase alarm's minute quickly
+ *   6.  SHORT press B1 to return to NORMAL mode
  * 
  *  Display Modes
  *   - current time (hh:mm:ss)
@@ -237,11 +253,11 @@ void increment_hour_ref(uint8_t* h) {
         *h = 0;
     }
 }
-void decrement_hour_ref(uint8_t* h) {
-    if (--*h == -1) {
-        *h = 23;
-    }
-}
+// void decrement_hour_ref(uint8_t* h) {
+//     if (--*h == -1) {
+//         *h = 23;
+//     }
+// }
 void increment_minute_ref(uint8_t* m) {
     if (++*m == 60) {
         *m = 0;
@@ -260,7 +276,6 @@ void increment_second() {
         }
     }
 }
-
 
 // Timer0 ISR, used to maintain the time, executes every 50ms
 void timer0_isr(void) __interrupt (1) __using (1) {
@@ -385,14 +400,14 @@ void main(void) {
             } 
             if (clock_state == ALARMING) {
                 if (show_colon == 1) {
-                    P3_7 = !P3_7;    // P3_7 = show_colon; (this toggling creates an interesting effect)
+                    P3_7 = !P3_7; // this toggling creates an interesting effect
                 } else {
-                    P3_7 = 1;    // if doing the toggling effect, need to make sure buzzer is off during blink
+                    P3_7 = 1; // if doing the toggling effect, need to make sure buzzer is off during blink
                 }
             }
-        } else if (clock_state == ALARMING) {    // turn off the alarm after 1 minute
-            clock_state = NORMAL;
-            P3_7 = 1;            // turn off the alarm
+        } else if (clock_state == ALARMING) { 
+            clock_state = NORMAL; // turn off the alarm after 1 minute
+            P3_7 = 1;             // turn off the alarm
         }
 
         // handle button events based on current clock state
@@ -473,11 +488,13 @@ void main(void) {
                     clock_state = EDIT_MIN;
                     B1_PRESSED = 0;
                 } else if (B2_PRESSED) {
-                    increment_hour_ref(&clock_hour); // hold down the button to rapidly increase hour
-                    clock_second = 0; // reset seconds to 0 when time is changed
+					// hold down the button to rapidly increase hour
+                    increment_hour_ref(&clock_hour);
+					// reset seconds to 0 when time is changed
+                    clock_second = 0;
                     B2_PRESSED = 0;                    
                 } else if (B2_PRESSED_LONG && clock_increment == 1) {
-                    increment_hour_ref(&clock_hour); // hold down the button to rapidly increase hour
+                    increment_hour_ref(&clock_hour);
                     clock_increment = 0;
                 } /* else if (B3_PRESSED) {
                     decrement_hour_ref(&clock_hour); // hold down the button to rapidly decrease hour
@@ -496,10 +513,9 @@ void main(void) {
                     CLOCK_RUNNING = 1;
                 } else if (B2_PRESSED) {
                     increment_minute_ref(&clock_minute);
-                    clock_second = 0; // reset seconds to 0 when time is changed
+                    clock_second = 0;
                     B2_PRESSED = 0;
                 } else if (B2_PRESSED_LONG && clock_increment == 1) {
-                    // hold down the button to rapidly increase minute
                     increment_minute_ref(&clock_minute);
                     clock_increment = 0;
                 } /* else if (B3_PRESSED) {
@@ -563,6 +579,20 @@ void main(void) {
                 dbuf[5] = ledtable[LED_BLANK];
                 break;
 
+			case EDIT_ALARM_HOUR:
+
+                if (show_blink == 1) {
+                    set_hour_dbuf(alarm_hour);
+                } else {
+                    dbuf[0] = ledtable[LED_BLANK];
+                    dbuf[1] = ledtable[LED_BLANK];
+                }
+                dbuf[2] = ledtable[(alarm_minute/10)];
+                dbuf[3] = ledtable[(alarm_minute%10)];
+                dbuf[4] = ledtable[LED_BLANK];
+                dbuf[5] = ledtable[LED_BLANK];
+                break;
+
             case EDIT_ALARM_MIN:
 
                 set_hour_dbuf(alarm_hour);
@@ -573,20 +603,6 @@ void main(void) {
                     dbuf[2] = ledtable[LED_BLANK];
                     dbuf[3] = ledtable[LED_BLANK];
                 }
-                dbuf[4] = ledtable[LED_BLANK];
-                dbuf[5] = ledtable[LED_BLANK];
-                break;
-
-            case EDIT_ALARM_HOUR:
-
-                if (show_blink == 1) {
-                    set_hour_dbuf(alarm_hour);
-                } else {
-                    dbuf[0] = ledtable[LED_BLANK];
-                    dbuf[1] = ledtable[LED_BLANK];
-                }
-                dbuf[2] = ledtable[(alarm_minute/10)];
-                dbuf[3] = ledtable[(alarm_minute%10)];
                 dbuf[4] = ledtable[LED_BLANK];
                 dbuf[5] = ledtable[LED_BLANK];
                 break;
